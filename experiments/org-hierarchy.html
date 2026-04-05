@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A multi-agent simulation exploring how decisions propagate through layers of organizational structure." />
+  <title>Simulating Organizational Hierarchy — Hypothesis Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+
+  <style>
+    /* ─── EXPERIMENT PAGE LAYOUT ─── */
+    .project-hero {
+      padding-top: calc(60px + clamp(4rem, 8vw, 7rem));
+      padding-bottom: clamp(3rem, 6vw, 5rem);
+      border-bottom: 1px solid var(--rule);
+    }
+    .project-hero .container {
+      display: grid;
+      grid-template-columns: 1fr min(320px, 28%);
+      gap: clamp(2rem, 5vw, 5rem);
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .project-hero .container { grid-template-columns: 1fr; }
+      .project-meta-block { order: -1; }
+    }
+    .project-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.05s forwards;
+    }
+    .project-eyebrow::before {
+      content: ''; display: block;
+      width: 20px; height: 1px;
+      background: var(--accent);
+    }
+    .project-title {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3.8rem);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      max-width: 18ch;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.15s forwards;
+    }
+    .project-lede {
+      margin-top: 1.5rem;
+      font-size: clamp(1rem, 1.4vw, 1.15rem);
+      color: var(--ink-muted);
+      max-width: 52ch;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.25s forwards;
+    }
+    .project-meta-block {
+      border: 1px solid var(--rule);
+      background: var(--surface);
+      opacity: 0;
+      animation: fadeUp 0.6s 0.3s forwards;
+    }
+    .meta-row {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-label {
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 0.35rem;
+    }
+    .meta-value { font-size: 0.88rem; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+    }
+    .status-pill::before {
+      content: ''; display: block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-wip     { color: #C4943A; }
+    .status-active  { color: #4A9B6F; }
+    .status-planned { color: var(--ink-muted); }
+
+    .project-body { padding: clamp(3rem, 7vw, 6rem) 0; }
+    .project-body .container {
+      display: grid;
+      grid-template-columns: 1fr min(260px, 24%);
+      gap: clamp(2rem, 5vw, 5rem);
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .project-body .container { grid-template-columns: 1fr; }
+      .project-toc { display: none; }
+    }
+
+    .project-toc {
+      position: sticky;
+      top: 80px;
+      border: 1px solid var(--rule);
+      background: var(--surface);
+      padding: 1.25rem;
+    }
+    .toc-label {
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 1rem;
+    }
+    .toc-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toc-list a {
+      font-size: 0.82rem;
+      color: var(--ink-muted);
+      text-decoration: none;
+      line-height: 1.4;
+      transition: color 0.2s;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .toc-list a::before { content: '—'; color: var(--rule); flex-shrink: 0; }
+    .toc-list a:hover, .toc-list a.active { color: var(--accent); }
+    .toc-list a.active::before { color: var(--accent); }
+
+    .project-nav {
+      border-top: 1px solid var(--rule);
+      padding: clamp(2rem, 5vw, 4rem) 0;
+    }
+    .project-nav .container {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .proj-nav-link {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      text-decoration: none;
+      max-width: 320px;
+    }
+    .proj-nav-link.next { text-align: right; margin-left: auto; }
+    .proj-nav-direction {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+    .proj-nav-title {
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      color: var(--ink);
+      transition: color 0.2s;
+    }
+    .proj-nav-link:hover .proj-nav-title { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="container">
+      <a class="nav-logo" href="/">Hypothesis<span>.</span>Labs</a>
+      <a class="nav-back" href="/#experiments">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M10 3L5 8l5 5"/>
+        </svg>
+        All Experiments
+      </a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="project-hero">
+    <div class="container">
+      <div>
+        <div class="project-eyebrow">Generative Agents</div>
+        <h1 class="project-title">Simulating Organizational Hierarchy</h1>
+        <p class="project-lede">A multi-agent simulation exploring how decisions propagate — and mutate — through layers of organizational structure. What does a directive actually look like by the time it reaches the front line?</p>
+      </div>
+      <aside class="project-meta-block">
+        <div class="meta-row">
+          <div class="meta-label">Status</div>
+          <div class="meta-value"><span class="status-pill status-wip">In Progress</span></div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-label">Started</div>
+          <div class="meta-value">April 2026</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-label">Tags</div>
+          <div class="tag-list" style="margin-top:0.35rem;">
+            <span class="tag">Multi-agent</span>
+            <span class="tag">Org Design</span>
+            <span class="tag">LLM</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <main class="project-body">
+    <div class="container">
+
+      <article class="prose">
+
+        <h2 id="motivation">Motivation</h2>
+        <p>The Park et al. paper on <a href="https://arxiv.org/pdf/2304.03442" target="_blank">Generative Agents</a> demonstrated that LLM-powered agents can produce surprisingly believable individual and emergent social behavior. Most examples focused on small-town social dynamics — who remembers what, who invites whom to a party. But what about more structured, hierarchical environments?</p>
+        <p>This experiment explores that question. If you seed a group of agents with roles, reporting lines, and a directive at the top — what actually arrives at the bottom? Does the message degrade, reinterpret, or amplify as it passes through layers?</p>
+
+        <blockquote>
+          The goal isn't to simulate a "correct" organization. It's to observe what happens when structure meets interpretation — repeatedly, at scale.
+          <cite>— Hypothesis Labs, April 2026</cite>
+        </blockquote>
+
+        <h2 id="setup">Experiment Setup</h2>
+        <p>The simulation uses eight agents in a three-tier hierarchy: one executive, three middle managers, and four individual contributors. Each agent has a system prompt defining their role, personality, and information access. No agent can see another's internal state — they only receive messages passed to them.</p>
+
+        <div class="callout">
+          <div class="callout-label">Architecture Note</div>
+          <p>Each agent uses a lightweight memory loop: recent messages + role context feed into each completion. Reflection passes run every five turns, updating each agent's internal belief state about the situation.</p>
+        </div>
+
+        <p>The directive is introduced at the executive level: <strong>"We are pivoting our core product focus to the defense sector within 90 days."</strong> The executive communicates to the three managers, who communicate to their ICs — but each agent paraphrases, contextualizes, and responds from their own perspective.</p>
+
+        <!-- Replace src with your actual image in /media/ -->
+        <div class="media-full reveal">
+          <img src="../media/org-hierarchy-diagram.png" alt="Three-tier agent hierarchy diagram" />
+          <div class="media-caption">Fig. 1 — Three-tier agent hierarchy. Arrows represent information flow.</div>
+        </div>
+
+        <h2 id="findings">Early Findings</h2>
+
+        <h3>The message mutates at every layer</h3>
+        <p>Even with simple, clear directives, each agent reframes the message through their role lens. The CFO-equivalent agent immediately translated the pivot into resource implications. A mid-level manager with a "people-first" persona softened the language considerably before passing it down. By the time the directive reached the IC level, two of four agents had received meaningfully different versions.</p>
+
+        <div class="media-grid reveal">
+          <div>
+            <img src="../media/layer-1-output.png" alt="Executive layer message" />
+            <div class="media-caption">Executive layer output</div>
+          </div>
+          <div>
+            <img src="../media/layer-3-output.png" alt="IC layer received message" />
+            <div class="media-caption">IC layer received message</div>
+          </div>
+        </div>
+
+        <h3>Personality amplifies divergence</h3>
+        <p>The more differentiated the agent personas, the more the message mutated. When all agents were given "neutral professional" personas, the directive passed through with roughly 80% fidelity. When personas included traits like skepticism or strong team loyalty, fidelity dropped significantly — and the downstream behavior became much more interesting.</p>
+
+        <div class="media-inline reveal">
+          <img src="../media/simulation-replay.gif" alt="Animated replay of one simulation run" />
+          <div class="media-caption">Fig. 2 — Animated replay of a single simulation run.</div>
+        </div>
+
+        <h2 id="walkthrough">Walkthrough</h2>
+        <p>The video below walks through a complete simulation run, narrated with commentary on what each agent is doing and why certain decision points are interesting.</p>
+
+        <!-- Replace with your actual YouTube/Vimeo embed URL -->
+        <div class="media-video reveal">
+          <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID" title="Simulation walkthrough" allowfullscreen></iframe>
+        </div>
+
+        <h2 id="next">What's Next</h2>
+        <p>The next iteration will introduce conflicting directives — two executives giving different instructions to overlapping sets of managers — and observe how agents resolve or avoid the contradiction.</p>
+        <p>A longer-term goal is an interactive browser version where you can define the org structure, inject the directive, and watch the simulation run in real time.</p>
+
+        <hr />
+        <p>Questions or want to collaborate? <a href="mailto:hello@hypothesislabs.com">hello@hypothesislabs.com</a></p>
+
+      </article>
+
+      <!-- TOC -->
+      <aside class="project-toc">
+        <div class="toc-label">Contents</div>
+        <ul class="toc-list">
+          <li><a href="#motivation">Motivation</a></li>
+          <li><a href="#setup">Experiment Setup</a></li>
+          <li><a href="#findings">Early Findings</a></li>
+          <li><a href="#walkthrough">Walkthrough</a></li>
+          <li><a href="#next">What's Next</a></li>
+        </ul>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- PREV / NEXT -->
+  <nav class="project-nav">
+    <div class="container">
+      <a class="proj-nav-link next" href="info-asymmetry.html">
+        <span class="proj-nav-direction">Next →</span>
+        <span class="proj-nav-title">Information Asymmetry in Small Teams</span>
+      </a>
+    </div>
+  </nav>
+
+  <footer>
+    <div class="container">
+      <div class="footer-logo">Hypothesis<span>.</span>Labs</div>
+      <div class="footer-note">Independent research. All experiments documented openly.</div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const ro = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('visible'); ro.unobserve(e.target); }
+      });
+    }, { threshold: 0.1 });
+    reveals.forEach(el => ro.observe(el));
+
+    // Active TOC
+    const headings = document.querySelectorAll('.prose h2[id]');
+    const tocLinks = document.querySelectorAll('.toc-list a');
+    const ho = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          tocLinks.forEach(l => l.classList.remove('active'));
+          const a = document.querySelector(`.toc-list a[href="#${e.target.id}"]`);
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-60px 0px -70% 0px' });
+    headings.forEach(h => ho.observe(h));
+  </script>
+
+</body>
+</html>
